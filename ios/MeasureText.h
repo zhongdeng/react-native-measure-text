@@ -5,6 +5,7 @@
 @interface MeasureText : NSObject <NativeMeasureTextSpec>
 #else
 #import <React/RCTBridgeModule.h>
+#import <React/RCTAccessibilityManager.h>
 
 @interface MeasureText : NSObject <RCTBridgeModule>
 #endif
