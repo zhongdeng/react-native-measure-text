@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { measure } from 'react-native-measure-text';
+import MeasureText from 'react-native-measure-text';
 
 const fontStyles = ['normal', 'italic'];
 const fontVariants = [
@@ -80,7 +80,9 @@ const App = () => {
     textAlign: textAlignments[textAlignIdx],
     textTransform: textTransformations[textTransformIdx],
     textAlignVertical: textAlignmentsVertical[textVerticalAlignIdx],
-    fontVariant: [fontVariants[fontVariantIdx]],
+    fontVariant: fontVariants[fontVariantIdx]
+      ? [fontVariants[fontVariantIdx]]
+      : [],
     letterSpacing,
     includeFontPadding,
   };
@@ -103,9 +105,11 @@ const App = () => {
         style={[styles.paragraph, style]}
         onLayout={({ nativeEvent }) => {
           setLayoutHeight(nativeEvent.layout.height);
-          measure(TEXT, WIDTH, style, props).then((height) => {
-            setMeasureHeight(height);
-          });
+          MeasureText.measureSingleText(TEXT, WIDTH, style, props).then(
+            ({ height }) => {
+              setMeasureHeight(height);
+            }
+          );
         }}
         {...props}
       >

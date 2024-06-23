@@ -6,29 +6,44 @@
 @implementation MeasureText
 RCT_EXPORT_MODULE()
 
-// Example method
-// See // https://reactnative.dev/docs/native-modules-ios
-RCT_EXPORT_METHOD(multiply:(double)a
-                  b:(double)b
-                  resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-{
-    NSNumber *result = @(a * b);
-
-    resolve(result);
-}
-
-RCT_EXPORT_METHOD(measure:(NSString *)text
+RCT_EXPORT_METHOD(measureSingleText:(NSString *)text
                     width:(CGFloat)width
                     style:(NSDictionary *)style
                     props:(NSDictionary *)props
                   resolve:(RCTPromiseResolveBlock)resolve
                    reject:(RCTPromiseRejectBlock)reject)
 {
-    NSInteger numberOfLines = 0; // [RCTConvert NSInteger:props[@"numberOfLines"]];
-    NSString *ellipsizeMode = @"tail"; // [RCTConvert NSString:props[@"ellipsizeMode"]];
-    BOOL allowFontScaling = YES; // [RCTConvert BOOL:props[@"allowFontScaling"]];
-    NSInteger maxFontSizeMultiplier = 1.0; // [RCTConvert NSInteger:props[@"maxFontSizeMultiplier"]];
+    NSArray<NSDictionary *> *sizes = [MeasureText measure:@[text]
+                                                    width:width
+                                                    style:style
+                                                    props:props];
+    resolve(sizes[0]);
+}
+
+RCT_EXPORT_METHOD(measureMultipleText:(NSArray<NSString *> *)texts
+                        width:(CGFloat)width
+                        style:(NSDictionary *)style
+                        props:(NSDictionary *)props
+                      resolve:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject)
+{
+    NSArray<NSDictionary *> *sizes = [MeasureText measure:texts 
+                                                    width:width
+                                                    style:style
+                                                    props:props];
+    NSMutableArray<NSNumber *> *heights = [NSMutableArray arrayWithCapacity:sizes.count];
+    resolve(sizes);
+}
+
++ (NSArray<NSDictionary *> *)measure:(NSArray<NSString *> *)texts
+                               width:(CGFloat)width
+                               style:(NSDictionary *)style
+                               props:(NSDictionary *)props
+{
+    NSInteger numberOfLines = 0;
+    NSString *ellipsizeMode = @"tail";
+    BOOL allowFontScaling = YES;
+    NSInteger maxFontSizeMultiplier = 1.0;
     
     if (props[@"numberOfLines"]) {
         numberOfLines = [RCTConvert NSInteger:props[@"numberOfLines"]];
@@ -43,8 +58,6 @@ RCT_EXPORT_METHOD(measure:(NSString *)text
         maxFontSizeMultiplier = [RCTConvert NSInteger:props[@"maxFontSizeMultiplier"]];
     }
     
-    NSLog(@"numberOfLines: %zd, ellipsizeMode: %@, allowFontScaling: %i, maxFontSizeMultiplier: %zd", numberOfLines, ellipsizeMode, allowFontScaling, maxFontSizeMultiplier);
-    
     UIFont *font = [RCTFont updateFont:nil
                             withFamily:[RCTConvert NSString:style[@"fontFamily"]]
                                   size:[RCTConvert NSNumber:style[@"fontSize"]]
@@ -52,11 +65,6 @@ RCT_EXPORT_METHOD(measure:(NSString *)text
                                  style:[RCTConvert NSString:style[@"fontStyle"]]
                                variant:[RCTConvert NSStringArray:style[@"fontVariant"]]
                        scaleMultiplier:maxFontSizeMultiplier];
-    if (!font) {
-        reject(@"0", @"font style invalid", [NSError errorWithDomain:@"font style invalid" code:0 userInfo:nil]);
-    }
-    
-    NSString *transformText = NSStringFromTextTransfrom(text, [RCTConvert NSString:style[@"textTransform"]]);
     
     CGSize maximumSize = CGSizeMake(width, CGFLOAT_MAX);
     CGFloat letterSpacing = [RCTConvert CGFloat:style[@"letterSpacing"]];
@@ -76,26 +84,38 @@ RCT_EXPORT_METHOD(measure:(NSString *)text
     layoutManager.allowsNonContiguousLayout = YES;
     [layoutManager addTextContainer:textContainer];
     
-    NSTextStorage *textStorage = [[NSTextStorage alloc] initWithString:transformText
-                                                            attributes:@{
+    NSDictionary<NSAttributedStringKey, id> *attributes = @{
         NSFontAttributeName: font,
         NSKernAttributeName: @(letterSpacing),
         NSParagraphStyleAttributeName: paragraphStyle
-    }];
-    [textStorage addLayoutManager:layoutManager];
+    };
     
-    [layoutManager ensureLayoutForTextContainer:textContainer];
-    CGSize size = [layoutManager usedRectForTextContainer:textContainer].size;
-    
-    if (!isnan(letterSpacing) && letterSpacing < 0) {
-      size.width -= letterSpacing;
+    NSMutableArray<NSDictionary *> *sizes = [NSMutableArray arrayWithCapacity:texts.count];
+    NSString *textTransform = [RCTConvert NSString:style[@"textTransform"]];
+    for (NSString *text in texts) {
+        NSString *transformText = NSStringFromTextTransfrom(text, textTransform);
+        
+        NSTextStorage *textStorage = [[NSTextStorage alloc] initWithString:transformText
+                                                                attributes:attributes];
+        [textStorage addLayoutManager:layoutManager];
+        [layoutManager ensureLayoutForTextContainer:textContainer];
+        CGSize size = [layoutManager usedRectForTextContainer:textContainer].size;
+        
+        if (!isnan(letterSpacing) && letterSpacing < 0) {
+          size.width -= letterSpacing;
+        }
+
+        size = (CGSize){
+            MIN(RCTCeilPixelValue(size.width), maximumSize.width), MIN(RCTCeilPixelValue(size.height), maximumSize.height)};
+
+        CGFloat epsilon = 1 / [UIScreen mainScreen].scale; // 0.001;
+        CGFloat width = RCTYogaFloatFromCoreGraphicsFloat(size.width + epsilon);
+        CGFloat height = RCTYogaFloatFromCoreGraphicsFloat(size.height + epsilon);
+        
+        [sizes addObject:@{@"width": @(width), @"height": @(height)}];
     }
-
-    size = (CGSize){
-        MIN(RCTCeilPixelValue(size.width), maximumSize.width), MIN(RCTCeilPixelValue(size.height), maximumSize.height)};
-
-    CGFloat epsilon = 1 / [UIScreen mainScreen].scale; // 0.001;
-    resolve(@(RCTYogaFloatFromCoreGraphicsFloat(size.height + epsilon)));
+    
+    return [sizes copy];
 }
 
 static NSLineBreakMode NSLineBreakModeFromEllipsizeMode(NSString *ellipsizeMode) {

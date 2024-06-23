@@ -13,11 +13,15 @@ import android.text.TextPaint;
 import android.util.Log;
 
 import com.facebook.common.logging.FLog;
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableArray;
+import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.module.annotations.ReactModule;
 import com.facebook.react.uimanager.DisplayMetricsHolder;
 import com.facebook.react.views.text.ReactTypefaceUtils;
@@ -44,24 +48,36 @@ public class MeasureTextModule extends ReactContextBaseJavaModule {
     return NAME;
   }
 
-
-  // Example method
-  // See https://reactnative.dev/docs/native-modules-android
   @ReactMethod
-  public void multiply(double a, double b, Promise promise) {
-    promise.resolve(a * b);
-  }
-
-  @ReactMethod
-  public void measure(String text, float width, ReadableMap style, ReadableMap props, Promise promise) {
-    if (text.length() == 0) {
-      promise.reject(new Error("text must not be empty"));
-    }
-
+  public void measureSingleText(String text, float width, ReadableMap style, ReadableMap props, Promise promise) {
     if (width < 0) {
       promise.reject(new Error("width must be greater than or equal to 0"));
     }
 
+    try {
+      ReadableMap size = MeasureTextModule.measureText(text, width, style, props, mReactContext);
+      promise.resolve(size);
+    } catch (Exception e) {
+      promise.reject(e);
+    }
+  }
+
+  @ReactMethod
+  public void measureMultipleText(ReadableArray texts, float width, ReadableMap style, ReadableMap props, Promise promise) {
+    try {
+      WritableArray sizes = Arguments.createArray();
+      for (int i = 0; i < texts.size(); i++) {
+        String text = texts.getString(i);
+        ReadableMap size = MeasureTextModule.measureText(text, width, style, props, mReactContext);
+        sizes.pushMap(size);
+      }
+      promise.resolve(sizes);
+    } catch (Exception e) {
+      promise.reject(e);
+    }
+  }
+
+  private static ReadableMap measureText(String text, float width, ReadableMap style, ReadableMap props, ReactApplicationContext reactContext) {
     int numberOfLines = 0;
     if (props.hasKey("numberOfLines")) {
       int value = props.getInt("numberOfLines");
@@ -116,6 +132,29 @@ public class MeasureTextModule extends ReactContextBaseJavaModule {
     TextAttributes textAttributes = new TextAttributes();
     textAttributes.setAllowFontScaling(allowFontScaling);
 
+    if (style.hasKey("textTransform")) {
+      String textTransformString = style.getString("textTransform");
+      TextTransform textTransform = TextTransform.NONE;
+      if (textTransformString != null) {
+        switch (textTransformString) {
+          case "uppercase":
+            text = text.toUpperCase();
+            textTransform = TextTransform.UPPERCASE;
+            break;
+          case "lowercase":
+            text = text.toLowerCase();
+            textTransform = TextTransform.LOWERCASE;
+            break;
+          case "capitalize":
+            text = Character.toUpperCase(text.charAt(0)) + text.substring(1);
+            textTransform = TextTransform.CAPITALIZE;
+            break;
+        }
+      }
+      textAttributes.setTextTransform(textTransform);
+      Log.d("STYLE", "textTransform: " + textTransformString);
+    }
+
     SpannableString spannableString = new SpannableString(text);
 
     // maxFontSizeMultiplier must set before fontSize/lineHeight/letterSpacing
@@ -147,29 +186,6 @@ public class MeasureTextModule extends ReactContextBaseJavaModule {
       Log.d("STYLE", "letterSpacing: " + letterSpacing);
     }
 
-    if (style.hasKey("textTransform")) {
-      String textTransformString = style.getString("textTransform");
-      TextTransform textTransform = TextTransform.NONE;
-      if (textTransformString != null) {
-        switch (textTransformString) {
-          case "uppercase":
-            text = text.toUpperCase();
-            textTransform = TextTransform.UPPERCASE;
-            break;
-          case "lowercase":
-            text = text.toLowerCase();
-            textTransform = TextTransform.LOWERCASE;
-            break;
-          case "capitalize":
-            text = Character.toUpperCase(text.charAt(0)) + text.substring(1);
-            textTransform = TextTransform.CAPITALIZE;
-            break;
-        }
-      }
-      textAttributes.setTextTransform(textTransform);
-      Log.d("STYLE", "textTransform: " + textTransformString);
-    }
-
     if (style.hasKey("fontFamily") || style.hasKey("fontStyle") || style.hasKey("fontWeight")) {
       int fontStyle = ReactTypefaceUtils.parseFontStyle(style.getString("fontStyle"));
       Log.d("STYLE", "fontStyle: " + fontStyle);
@@ -180,7 +196,7 @@ public class MeasureTextModule extends ReactContextBaseJavaModule {
       String fontFamily = style.getString("fontFamily");
       Log.d("STYLE", "fontFamily: " + fontFamily);
 
-      CustomStyleSpan customStyleSpan = new CustomStyleSpan(fontStyle,fontWeight, null, fontFamily, mReactContext.getAssets());
+      CustomStyleSpan customStyleSpan = new CustomStyleSpan(fontStyle,fontWeight, null, fontFamily, reactContext.getAssets());
       spannableString.setSpan(customStyleSpan, 0, spannableString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
@@ -235,7 +251,6 @@ public class MeasureTextModule extends ReactContextBaseJavaModule {
         case 5:
           alignment = Layout.Alignment.ALIGN_OPPOSITE;
       }
-
       Log.d("STYLE", "textAlign: " + textAlignString);
     }
 
@@ -278,7 +293,12 @@ public class MeasureTextModule extends ReactContextBaseJavaModule {
     }
 
     int lineCount = numberOfLines > 0 ? Math.min(numberOfLines, layout.getLineCount()) : layout.getLineCount();
+    float layoutWidth = layout.getWidth();
     float layoutHeight =  layout.getLineBottom(lineCount - 1);
-    promise.resolve(layoutHeight / density);
+
+    WritableMap result = Arguments.createMap();
+    result.putDouble("width", layoutWidth / density);
+    result.putDouble("height", layoutHeight / density);
+    return result;
   }
 }

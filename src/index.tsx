@@ -31,11 +31,25 @@ const PROPS_DEFAULT_VALUE: MeasureTextProps = {
   android_hyphenationFrequency: 'none', // Android only
 };
 
-export const measure = (
+const measureSingleText = (
   text: string,
   width: number,
   style: MeasureTextStyle = {},
   props: MeasureTextProps = PROPS_DEFAULT_VALUE
-): Promise<number> => {
-  return MeasureText.measure(text, width, style, props);
+): Promise<{ width: number; height: number }> => {
+  return MeasureText.measureSingleText(text, width, style, props);
+};
+
+const measureMultipleText = (
+  texts: string[],
+  width: number,
+  style: MeasureTextStyle = {},
+  props: MeasureTextProps = PROPS_DEFAULT_VALUE
+): Promise<{ width: number; height: number }[]> => {
+  return MeasureText.measureMultipleText(texts, width, style, props);
+};
+
+export default {
+  measureSingleText,
+  measureMultipleText,
 };

@@ -56,10 +56,16 @@ export type MeasureTextProps = {
 };
 
 export type MeasureTextMethod = {
-  measure: (
+  measureSingleText: (
     text: string,
     width: number,
     style: MeasureTextStyle,
     props: MeasureTextProps
-  ) => Promise<number>;
+  ) => Promise<{ width: number; height: number }>;
+  measureMultipleText: (
+    texts: string[],
+    width: number,
+    style: MeasureTextStyle,
+    props: MeasureTextProps
+  ) => Promise<{ width: number; height: number }[]>;
 };
