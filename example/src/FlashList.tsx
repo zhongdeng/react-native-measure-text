@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Text, SafeAreaView, Dimensions } from 'react-native';
-import MeasureText from 'react-native-measure-text';
+import MeasureText from '@zhongdeng/react-native-measure-text';
 import { FlashList } from '@shopify/flash-list';
 import data from './data.json';
 import type { MeasureTextStyle } from '../../src/types';
@@ -8,18 +8,20 @@ import type { MeasureTextStyle } from '../../src/types';
 const PADDING = 16;
 const INDEX_HEIGHT = 36;
 const SEPARATOR_HEIGHT = 4;
+const EXTRA_HEIGHT = PADDING * 2 + INDEX_HEIGHT + SEPARATOR_HEIGHT;
 
 const style: MeasureTextStyle = { fontWeight: 'bold', fontSize: 30 };
 
 const props = {};
 
-type DataType = { text: string };
+type DataType = { text: string; height?: number };
 
 const Divider = () => <View style={styles.separator} />;
 
 export default () => {
-  const [list, setList] = useState<number[]>([]);
   const flashListRef = useRef<any>(null);
+  const averageHeightRef = useRef(0);
+  const [list, setList] = useState<DataType[]>([]);
   useEffect(() => {
     const texts: DataType[] = data;
     const width = Dimensions.get('window').width - PADDING * 2;
@@ -29,25 +31,29 @@ export default () => {
       style,
       props
     ).then((value) => {
-      setList(value.map((item) => item.height));
+      setList(() => {
+        let totalHeight = 0;
+        const newState = texts.map((item, index) => {
+          const height = value[index]?.height || 0;
+          totalHeight += height + EXTRA_HEIGHT;
+          return { ...item, height };
+        });
+        averageHeightRef.current = totalHeight / texts.length;
+        return [...newState];
+      });
     });
   }, []);
 
   return (
     <SafeAreaView style={styles.container}>
-      {list && (
+      {list.length > 0 && (
         <FlashList
-          data={data}
+          data={list}
           ref={flashListRef}
-          estimatedItemSize={
-            140 + PADDING * 2 + INDEX_HEIGHT + SEPARATOR_HEIGHT
-          }
-          overrideItemLayout={(layout, _, index) => {
-            layout.size =
-              (list[index] || 0) +
-              PADDING * 2 +
-              INDEX_HEIGHT +
-              SEPARATOR_HEIGHT;
+          initialScrollIndex={333}
+          estimatedItemSize={averageHeightRef.current}
+          overrideItemLayout={(layout, item) => {
+            layout.size = item.height! + EXTRA_HEIGHT;
           }}
           renderItem={({ item, index }) => (
             <View style={styles.item}>
@@ -56,14 +62,6 @@ export default () => {
             </View>
           )}
           ItemSeparatorComponent={Divider}
-          onLoad={({ elapsedTimeInMs }) => {
-            setTimeout(() => {
-              flashListRef.current?.scrollToIndex({
-                index: 333,
-                animated: false,
-              });
-            }, elapsedTimeInMs);
-          }}
         />
       )}
     </SafeAreaView>

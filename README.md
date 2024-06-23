@@ -11,7 +11,7 @@ npm install react-native-measure-text
 ## Usage
 
 ```js
-import MeasureText from 'react-native-measure-text';
+import MeasureText from '@zhongdeng/react-native-measure-text';
 
 const style = {};
 

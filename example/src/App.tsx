@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import MeasureText from 'react-native-measure-text';
+import MeasureText from '@zhongdeng/react-native-measure-text';
 
 const fontStyles = ['normal', 'italic'];
 const fontVariants = [
