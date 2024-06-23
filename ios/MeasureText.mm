@@ -108,7 +108,7 @@ RCT_EXPORT_METHOD(measureMultipleText:(NSArray<NSString *> *)texts
         size = (CGSize){
             MIN(RCTCeilPixelValue(size.width), maximumSize.width), MIN(RCTCeilPixelValue(size.height), maximumSize.height)};
 
-        CGFloat epsilon = 1 / [UIScreen mainScreen].scale; // 0.001;
+        CGFloat epsilon = 0.001;
         CGFloat width = RCTYogaFloatFromCoreGraphicsFloat(size.width + epsilon);
         CGFloat height = RCTYogaFloatFromCoreGraphicsFloat(size.height + epsilon);
         
