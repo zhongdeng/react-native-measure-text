@@ -1,5 +1,5 @@
 {
-  "name": "react-native-measure-text",
+  "name": "@zhongdeng/react-native-measure-text",
   "version": "0.1.0",
   "description": "measure text size",
   "main": "lib/commonjs/index",
