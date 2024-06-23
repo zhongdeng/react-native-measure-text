@@ -50,7 +50,7 @@
   },
   "homepage": "https://github.com/zhongdeng/react-native-measure-text#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "access": "public"
   },
   "devDependencies": {
     "@commitlint/config-conventional": "^17.0.2",
