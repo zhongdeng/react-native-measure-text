@@ -11,11 +11,18 @@ npm install react-native-measure-text
 ## Usage
 
 ```js
-import { multiply } from 'react-native-measure-text';
+import MeasureText from 'react-native-measure-text';
 
-// ...
+const style = {};
 
-const result = await multiply(3, 7);
+const props = {};
+
+const { width, height } = await MeasureText.measureSingleText(
+  'text',
+  300,
+  style,
+  props
+);
 ```
 
 ## Contributing
